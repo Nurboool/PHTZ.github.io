@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Фотоэффектті зерттеу құрылғысы</title>
+    <link rel="stylesheet" href="">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<style type="text/css">
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f3f3f3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+.container {
+    text-align: center;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    width: 80%;
+    height: 100%;
+}
+
+.experiment {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin: 20px 0;
+}
+
+.lamp {
+    width: 100px;
+    height: 200px;
+    background: radial-gradient(circle, #ffcc33, #ff6600);
+    border: 3px solid #333;
+    border-radius: 10px;
+}
+
+.filters {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 16px;
+}
+
+.photoelement {
+    width: 150px;
+    height: 200px;
+    background: linear-gradient(to bottom, #87ceeb, #4682b4);
+    border: 3px solid #333;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.control-panel {
+    margin-top: 20px;
+}
+
+canvas {
+    margin-top: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+</style>
+<body>
+    <div class="container">
+        <h1>Фотоэффектті зерттеу құрылғысы</h1>
+        <div class="experiment">
+            <div class="lamp"></div>
+            <div class="filters">
+                <label for="filter">Жарық сүзгіш:</label>
+                <select id="filter">
+                    <option value="505">505 нм</option>
+                    <option value="525">525 нм</option>
+                    <option value="540">540 нм</option>
+                </select>
+            </div> 
+            <div class="photoelement">
+                <p>Фотоэлемент</p>
+            </div>
+        </div>
+        <div class="control-panel">
+            <label for="voltage">Кернеу (V):</label>
+            <input type="range" id="voltage" min="0" max="20" step="1" value="10">
+            <p>Кернеу: <span id="voltageValue">10</span> V</p>
+            <p>Фототок: <span id="currentValue">5</span> мкА</p>
+            <button id="resetGraph">Графикті тазалау</button>
+        </div> <br>
+        <br>
+        <br>
+        <br>
+        <br><br><br><br><br><br><br><br><br>
+        <canvas id="graph" width="600" height="300"></canvas>
+        <div class="calculations">
+            <h2>Есептеулер нәтижелері</h2>
+            <p>Толқын ұзындығы (λ): <span id="wavelength">505</span> нм</p>
+            <p>Тежеуіш кернеу (U<sub>т</sub>): <span id="stoppingVoltage">0</span> V</p>
+            <p>Электронның шығу жұмысы (A): <span id="workFunction">0</span> Дж</p>
+            <p>Планк тұрақтысы (h): <span id="planckConstant">0</span> Дж·с</p>
+        </div>
+    </div>
+    <script>
+      const voltageSlider = document.getElementById('voltage');
+const voltageValue = document.getElementById('voltageValue');
+const currentValue = document.getElementById('currentValue');
+const filterSelector = document.getElementById('filter');
+const resetGraphButton = document.getElementById('resetGraph');
+const wavelengthOutput = document.getElementById('wavelength');
+const stoppingVoltageOutput = document.getElementById('stoppingVoltage');
+const workFunctionOutput = document.getElementById('workFunction');
+const planckConstantOutput = document.getElementById('planckConstant');
+const ctx = document.getElementById('graph').getContext('2d');
+
+const e = 1.6e-19; // Электрон заряды
+const c = 3e8; // Жарық жылдамдығы
+
+let graphData = {
+    labels: [],
+    datasets: [{
+        label: 'Фототок (мкА)',
+        data: [],
+        borderColor: 'blue',
+        borderWidth: 2,
+        fill: false,
+    }]
+};
+
+let chart = new Chart(ctx, {
+    type: 'line',
+    data: graphData,
+    options: {
+        responsive: true,
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: 'Кернеу (V)'
+                }
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: 'Фототок (мкА)'
+                },
+                min: 0
+            }
+        }
+    }
+});
+
+voltageSlider.addEventListener('input', () => {
+    const voltage = parseInt(voltageSlider.value);
+    const wavelength = parseInt(filterSelector.value); // Сүзгінің толқын ұзындығы
+    voltageValue.textContent = voltage;
+
+    // Толқын ұзындығына сәйкес бастапқы ток мәні
+    const baseCurrent = 0.3; // I1, I2, I3 үшін бастапқы ток
+    const current = Math.max(baseCurrent - voltage * 0.02, 0).toFixed(3); // Токты есептеу
+    currentValue.textContent = current;
+
+    // Тежеуіш кернеуді есептеу (Uт = hν/e - A/e)
+    const frequency = c / (wavelength * 1e-9); // Жиілік
+    const stoppingVoltage = (6.63e-34 * frequency / e - 2.2).toFixed(3); // A = 2.2 Дж
+    const workFunction = (e * stoppingVoltage).toFixed(3); // Электронның шығу жұмысы
+    const planckConstant = (workFunction / frequency).toExponential(3); // Планк тұрақтысы
+
+    // Нәтижелерді көрсету
+    wavelengthOutput.textContent = wavelength;
+    stoppingVoltageOutput.textContent = stoppingVoltage;
+    workFunctionOutput.textContent = workFunction;
+    planckConstantOutput.textContent = planckConstant;
+
+    // Графикке деректерді қосу
+    if (!graphData.labels.includes(voltage)) {
+        graphData.labels.push(voltage);
+        graphData.datasets[0].data.push(current);
+        chart.update();
+    }
+});
+
+resetGraphButton.addEventListener('click', () => {
+    graphData.labels = [];
+    graphData.datasets[0].data = [];
+    chart.update();
+});
+    </script>
+</body>
+</html>
